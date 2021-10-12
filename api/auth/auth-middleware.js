@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 const { JWT_SECRET } = require("../secrets");
+const { tokenBuilder } = require("./tokenbuilder");
 const Users = require("./../users/users-model");
 
 const restricted = (req, res, next) => {
@@ -58,9 +60,33 @@ const validateRoleName = (req, res, next) => {
   }
 };
 
+const checkPasswordCorrect = async (req, res, next) => {
+  let { username, password } = req.body;
+
+  const validUser = await Users.findBy({ username: username });
+
+  if (validUser && bcrypt.compareSync(password, validUser.password)) {
+    const token = tokenBuilder(validUser);
+    req.token = token;
+    next();
+  } else {
+    next({ status: 401, message: "Invalid Credentials" });
+  }
+};
+
+const hashThePassword = (req, res, next) => {
+  const rounds = process.env.BCRYPT_ROUNDS || 8;
+  const hash = bcrypt.hashSync(req.body.password, rounds);
+
+  req.body.password = hash;
+  next();
+};
+
 module.exports = {
   restricted,
   checkUsernameExists,
   validateRoleName,
   only,
+  checkPasswordCorrect,
+  hashThePassword,
 };
