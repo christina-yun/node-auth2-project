@@ -1,7 +1,7 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../secrets"); // use this secret!
 
-const Users = require('./../users/users-model');
+const Users = require("./../users/users-model");
 
 const restricted = (req, res, next) => {
   /*
@@ -19,23 +19,23 @@ const restricted = (req, res, next) => {
 
     Put the decoded token in the req object, to make life easier for middlewares downstream!
   */
-    const token = req.headers.authorization;
+  const token = req.headers.authorization;
 
-    if(!token){
-      return next({ status: 401, message: 'Token required'})
+  if (!token) {
+    return next({ status: 401, message: "Token required" });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
+    if (err) {
+      return next({ status: 401, message: "Token invalid" });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decodedToken) =>{
-      if(err) {
-        return next({ status: 401, message: 'Token invalid'})
-      }
+    req.decodedToken = decodedToken;
+    return next();
+  });
+};
 
-      req.decodedToken = decodedToken
-      return next();
-    })
-}
-
-const only = role_name => (req, res, next) => {
+const only = (role_name) => (req, res, next) => {
   /*
     If the user does not provide a token in the Authorization header with a role_name
     inside its payload matching the role_name passed to this function as its argument:
@@ -46,9 +46,7 @@ const only = role_name => (req, res, next) => {
 
     Pull the decoded token from the req object, to avoid verifying it again!
   */
-
-}
-
+};
 
 const checkUsernameExists = async (req, res, next) => {
   /*
@@ -58,14 +56,13 @@ const checkUsernameExists = async (req, res, next) => {
       "message": "Invalid credentials"
     }
   */
-  const validUsername = await Users.findBy({ username: req.body.username })
-    if(!validUsername){
-      next({ status: 401, message: 'Invalid credentials'})
-    } else {
-      next();
-    }
-}
-
+  const validUsername = await Users.findBy({ username: req.body.username });
+  if (!validUsername) {
+    next({ status: 401, message: "Invalid credentials" });
+  } else {
+    next();
+  }
+};
 
 const validateRoleName = (req, res, next) => {
   /*
@@ -86,26 +83,30 @@ const validateRoleName = (req, res, next) => {
       "message": "Role name can not be longer than 32 chars"
     }
   */
- const role_name = req.body.role_name;
+  const role_name = req.body.role_name;
 
- if(!role_name || role_name === null){
-   req.body.role_name = 'student';
-   next();
- } else {
-  const trimmedRole = req.body.role_name.trim().toLowerCase();
-  if(trimmedRole === 'admin'){
-    next({ status: 422, message: 'Role name can not be admin'})
-  } else if(trimmedRole.length > 32){
-    next({ status: 422, message: 'Role name can not be longer than 32 chars'})
-  } else {
+  if (!role_name || role_name.trim().length < 1) {
+    req.body.role_name = "student";
     next();
+  } else {
+    const trimmedRole = req.body.role_name.trim().toLowerCase();
+    if (trimmedRole === "admin") {
+      next({ status: 422, message: "Role name can not be admin" });
+    } else if (trimmedRole.length > 32) {
+      next({
+        status: 422,
+        message: "Role name can not be longer than 32 chars",
+      });
+    } else {
+      req.body.role_name = trimmedRole;
+      next();
+    }
   }
- }
-}
+};
 
 module.exports = {
   restricted,
   checkUsernameExists,
   validateRoleName,
   only,
-}
+};
